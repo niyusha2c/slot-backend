@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'change-this-in-production';
 
