@@ -50,7 +50,7 @@ async function initDB() {
       global_drops_visible: 'true',
       live_counter_visible: 'true',
       seasonal_accent: 'true',
-      max_chars: '200',
+      max_chars: '1000',
       drops_per_day: '1',
       announcement: '',
     };
@@ -168,7 +168,7 @@ app.post('/api/drop', async (req, res) => {
 
     await pool.query(
       "INSERT INTO drops (device_hash, mode, char_count) VALUES ($1, $2, $3)",
-      [deviceHash, mode, Math.min(charCount, parseInt(config.max_chars || '200'))]
+      [deviceHash, mode, Math.min(charCount, parseInt(config.max_chars || '1000'))]
     );
 
     // Update streak
