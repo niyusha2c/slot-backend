@@ -39,6 +39,12 @@ async function initDB() {
         key TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS feedback (
+      id SERIAL PRIMARY KEY,
+      message TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     `);
 
     // Default config
@@ -208,6 +214,39 @@ app.post('/api/drop', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
+
+  // Feedback endpoint
+  app.post('/api/feedback', async (req, res) => {
+    try {
+      const { message } = req.body;
+      if (!message || message.length > 1000) {
+        return res.status(400).json({ error: 'Invalid message' });
+      }
+      await pool.query(
+        'INSERT INTO feedback (message) VALUES ($1)',
+        [message]
+      );
+      res.json({ success: true });
+    }  catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Get recent feedback
+  app.get('/api/admin/feedback', async (req, res) => {
+    const key = req.headers['x-admin-key'];
+    if (key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const result = await pool.query(
+        'SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50'
+      );
+      res.json({ feedback: result.rows });
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
 });
 
 app.get('/api/count', async (req, res) => {
