@@ -41,10 +41,10 @@ async function initDB() {
       );
 
       CREATE TABLE IF NOT EXISTS feedback (
-      id SERIAL PRIMARY KEY,
-      message TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+        id SERIAL PRIMARY KEY,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Default config
@@ -99,7 +99,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Public API
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 app.get('/api/status', async (req, res) => {
   try {
@@ -214,39 +214,6 @@ app.post('/api/drop', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
-
-  // Feedback endpoint
-  app.post('/api/feedback', async (req, res) => {
-    try {
-      const { message } = req.body;
-      if (!message || message.length > 1000) {
-        return res.status(400).json({ error: 'Invalid message' });
-      }
-      await pool.query(
-        'INSERT INTO feedback (message) VALUES ($1)',
-        [message]
-      );
-      res.json({ success: true });
-    }  catch (err) {
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
-
-  // Get recent feedback
-  app.get('/api/admin/feedback', async (req, res) => {
-    const key = req.headers['x-admin-key'];
-    if (key !== process.env.ADMIN_KEY) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    try {
-      const result = await pool.query(
-        'SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50'
-      );
-      res.json({ feedback: result.rows });
-    } catch (err) {
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
 });
 
 app.get('/api/count', async (req, res) => {
@@ -263,7 +230,22 @@ app.get('/api/count', async (req, res) => {
   }
 });
 
-// Admin API
+// Feedback (was incorrectly nested inside /api/drop — now fixed at top level)
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || message.trim().length === 0 || message.length > 1000) {
+      return res.status(400).json({ error: 'Invalid message' });
+    }
+    await pool.query('INSERT INTO feedback (message) VALUES ($1)', [message.trim()]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ─── Admin API ────────────────────────────────────────────────────────────────
 
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
@@ -310,6 +292,18 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.get('/api/admin/feedback', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50'
+    );
+    res.json({ feedback: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -376,7 +370,8 @@ app.post('/api/admin/reset-counter', requireAdmin, async (req, res) => {
   }
 });
 
-// Start server
+// ─── Start server ─────────────────────────────────────────────────────────────
+
 app.listen(PORT, () => {
   console.log(`slot. backend running on port ${PORT}`);
 });
